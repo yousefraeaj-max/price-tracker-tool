@@ -1,7 +1,6 @@
 """
 main.py — نقطة الدخول الرئيسية
 يشغّل بوت التليجرام + worker الأسعار في نفس الوقت
-Railway بيشغّل ده من الـ Procfile
 """
 
 import asyncio
@@ -10,6 +9,7 @@ import os
 import sys
 import threading
 
+# إعداد الـ Logs
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -17,18 +17,22 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-
 def run_bot():
-    """يشغّل بوت التليجرام في thread منفصل"""
+    """تشغيل البوت في event loop خاص ومستقل داخل الـ thread"""
     import bot
-    bot.main()
-
+    # ننشئ loop جديد خاص بالبوت لضمان استقراره داخل الـ Thread
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        log.info("بدء تطبيق البوت...")
+        bot.main()
+    except Exception as e:
+        log.error(f"خطأ في الـ bot thread: {e}")
 
 async def run_scraper():
     """يشغّل الـ worker في asyncio loop"""
     from scraper import run_worker
     await run_worker()
-
 
 def main():
     token = os.environ.get("TELEGRAM_TOKEN", "")
@@ -45,8 +49,10 @@ def main():
 
     # شغّل الـ scraper worker في الـ main loop
     log.info("✅ Price Scraper Worker بيبدأ...")
-    asyncio.run(run_scraper())
-
+    try:
+        asyncio.run(run_scraper())
+    except KeyboardInterrupt:
+        log.info("تم إيقاف المنصة")
 
 if __name__ == "__main__":
     main()
